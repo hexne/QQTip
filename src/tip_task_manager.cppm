@@ -60,7 +60,7 @@ public:
             if (current_chapter > check_chapter)
                 check_chapter = current_chapter;
         }
-        if (check_chapter == -1 or check_chapter == last_chapter_number_)
+        if (check_chapter == -1 or last_chapter_number_ == -1 or check_chapter == last_chapter_number_)
             return { false, "" };
 
         int diff = check_chapter - last_chapter_number_;
@@ -73,6 +73,30 @@ public:
 };
 
 
+class Tip : TipTask {
+    LocalTime tip_time_;
+    LocalTime interval_;
+    std::string tip_message_;
+
+public:
+    // 参数是某个时间点，不含日期
+    Tip(LocalTime tip_time, LocalTime interval, std::string tip_message) : tip_time_(tip_time) {
+        auto today = LocalTime::now().today();
+        tip_time_ = today + tip_time;
+        interval_ = interval;
+        tip_message_ = tip_message;
+    }
+
+    std::tuple<bool, std::string> check() override {
+        auto now = LocalTime::now();
+        if (now < tip_time_)
+            return {false, ""};
+        tip_time_ += interval_;
+        return {true, tip_message_};
+    }
+
+
+};
 
 
 
@@ -97,7 +121,7 @@ export class TipTaskManager {
         case 'D':
             return std::chrono::days{number};
         default:
-            throw std::runtime_error(std::format("unknown interval type => {}", ch));
+            throw std::runtime_error(std::format("unknown time type => {}", ch));
         }
 
 
@@ -120,12 +144,12 @@ public:
             // 小说更新
             if (type == "NovelUpdate") {
                 std::vector<std::string> urls;
-                if (!obj.contains("url") or !obj["url"].is_array()) {
+                if (!obj.contains("urls") or !obj["urls"].is_array())
                     throw std::format_error(std::format("tasks format error {}", task_name));
-                    for (auto& u : obj["url"]) {
-                        urls.push_back(u.get<std::string>());
-                    }
-                }
+
+                for (auto& u : obj["urls"])
+                    urls.push_back(u.get<std::string>());
+
                 auto duration = string_to_duration(obj["interval"]);
                 auto task = std::make_shared<NovelUpdate>(task_name, urls);
                 auto task_id = timer_.add_repeat_task([=] {
@@ -135,10 +159,8 @@ public:
                     auto message = Message(obj["user"], message_str);
                     send_private_message(message);
                 }, duration);
-
-
+                tasks_.insert({task_id, task});
             }
-
 
             // 普通Tip
             else if (type == "Tip") {
@@ -153,11 +175,26 @@ public:
 
     }
 
-    void add_task(std::shared_ptr<TipTask> task) {  }
-    void remove_task(std::shared_ptr<TipTask> task) {  }
-    void update_task(std::shared_ptr<TipTask> task) {  }
-    void search_task(std::shared_ptr<TipTask> task) {  }
+    void add_task(int id, std::shared_ptr<TipTask> task) {  }
+    void remove_task(int id) {  }
+    void update_task(int id, std::shared_ptr<TipTask> task) {
+        tasks_[id] = task;
+    }
 
+    auto&& search_task(int id) {
+        return tasks_[id];
+    }
+
+    std::string tasks_info() {
+        auto count = std::format("运行中的任务数量 : {}", timer_.task_count());
+        auto novel_update = std::format("{}", "");
+        auto tip = std::format("{}", "");
+        return std::format("{}\n{}\n{}\n", count, novel_update, tip);
+    }
+
+    int count() const {
+        return tasks_.size();
+    }
 
 };
 

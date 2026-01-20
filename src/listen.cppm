@@ -10,23 +10,36 @@ import tip_task_manager;
 
 LocalTime start_time = LocalTime::now();
 
+void command_help(long long reply_id) {
+    std::string help =  "/info  : 查看NapCat运行信息\n"
+                        "/tasks : 当前运行的提醒任务\n"
+                        "/help  : 查看指令\n";
+
+    auto message = Message(config.admin, help, reply_id);
+    send_private_message(message);
+}
 void command_info(long long reply_id) {
+
+    auto task_info = std::format("当前有{}个任务", tip_task_manager.count());
 
     auto now = LocalTime::now() - start_time;
     auto time = std::format("QQTip持续运行 {}d, {:2}h {:2}m {:2}s",
             now.count<std::chrono::days>(), now.get<std::chrono::hours>(), now.get<std::chrono::minutes>(), now.get<std::chrono::seconds>());
 
-    auto message = Message(config.admin, time, reply_id);
+    auto info = std::format("{}\n{}", task_info, time);
+
+    auto message = Message(config.admin, info, reply_id);
     send_private_message(message);
 }
 
 void command_tasks(long long reply_id) {
-    tip_task_manager;
-
+    auto message = Message(config.admin, tip_task_manager.tasks_info(), reply_id);
+    send_private_message(message);
 }
 
 export void listen() {
     static std::map<std::string, std::function<void(long long)>> command_funcs = {
+        {"/help", command_help },
         { "/info", command_info },
         {"/tasks", command_tasks },
     };

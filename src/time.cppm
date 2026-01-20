@@ -139,8 +139,8 @@ public:
     }
 
 
-    static TimeImpl from_date(int year, int month, int hour) {
-        return TimeImpl(year, month, hour, 0, 0, 0);
+    static TimeImpl from_date(int year, int month, int day) {
+        return TimeImpl(year, month, day, 0, 0, 0);
     }
     static TimeImpl from_date(const std::string& date) {
         auto date_vec = split_string(date);
@@ -215,6 +215,10 @@ public:
 
     static TimeImpl now() {
         return TimeImpl(std::chrono::system_clock::now());
+    }
+
+    TimeImpl today() {
+        return TimeImpl::from_date( get<std::chrono::year>(), get<std::chrono::month>(), get<std::chrono::day>());
     }
 
     TimeImpl& to_now() {
