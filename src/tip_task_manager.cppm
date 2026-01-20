@@ -13,7 +13,7 @@ import message;
 
 struct TipTask {
     virtual std::tuple<bool, std::string> check() = 0;
-
+    virtual std::string get_name() = 0;
     virtual ~TipTask() = default;
 };
 
@@ -70,6 +70,9 @@ public:
     NovelUpdate(std::string name, const std::vector<std::string> &urls) :
         novel_name_(std::move(name)), urls_(urls) {  }
 
+    std::string get_name() override {
+        return novel_name_;
+    }
 };
 
 
@@ -95,6 +98,9 @@ public:
         return {true, tip_message_};
     }
 
+    std::string get_name() override {
+        return tip_message_;
+    }
 
 };
 
@@ -187,9 +193,32 @@ public:
 
     std::string tasks_info() {
         auto count = std::format("运行中的任务数量 : {}", timer_.task_count());
-        auto novel_update = std::format("{}", "");
-        auto tip = std::format("{}", "");
-        return std::format("{}\n{}\n{}\n", count, novel_update, tip);
+        std::vector<std::string> novel, tip;
+        for (auto &&[task_id, task] : tasks_) {
+            if (auto p = dynamic_cast<NovelUpdate*>(task.get()); p != nullptr) {
+                novel.push_back(p->get_name());
+            }
+            else if (auto p = dynamic_cast<Tip*>(task.get()); p != nullptr) {
+                tip.push_back(p->get_name());
+            }
+            else
+                throw std::runtime_error(std::format("unknown task type => {}", task->get_name()));
+        }
+        // 小说更新类的提示有多少
+        std::string novel_string, tip_string;
+        if (!novel.empty()) {
+            novel_string = "小说更新提醒：\n";
+            for (auto &&str : novel) {
+                novel_string += '\t' + str + '\n';
+            }
+        }
+        if (!tip.empty()) {
+            tip_string = "代办事项提醒：\n";
+            for (auto &&str : tip) {
+                tip_string += '\t' + str + '\n';
+            }
+        }
+        return std::format("{}{}{}", novel_string, tip_string, count);
     }
 
     int count() const {
